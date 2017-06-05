@@ -24,20 +24,6 @@ data class Todo(var id: Int = 0, var title: String = "", var completed: Boolean 
         get() = "${Config.root}/${id}";
 }
 
-fun insertTodo(todo: Todo): Todo {
-    todo.id = seq++
-    todos[todo.id] = todo
-    return todo
-}
-
-fun updateTodo(todo: Todo, id: Int): Todo {
-    val old = todos[id]!!;
-    if (!todo.title.isEmpty()) old.title = todo.title
-    if (todo.completed) old.completed = true
-    if (todo.order > -1) old.order = todo.order
-    return old
-}
-
 fun <B : HeadersBuilder<B>> B.cors(): B = header("Access-Control-Allow-Origin", "*").
         header("Access-Control-Allow-Methods", "DELETE,GET,HEAD,PATCH,POST,PUT,PATCH").
         header("Access-Control-Allow-Headers", "accept,content-type")
@@ -45,6 +31,8 @@ fun <B : HeadersBuilder<B>> B.cors(): B = header("Access-Control-Allow-Origin", 
 
 @Configuration
 class ApplicationRoutes() {
+
+
     @Bean
     fun mainRouter() = router {
         OPTIONS("/").or(OPTIONS("/{id}")).invoke {
@@ -52,7 +40,10 @@ class ApplicationRoutes() {
         }
         GET("/", { ServerResponse.ok().cors().body(Flux.fromIterable(todos.values), Todo::class.java) })
         POST("/", {
-            val m = it.bodyToMono(Todo::class.java).map(::insertTodo)
+            val m = it.bodyToMono(Todo::class.java).map({
+                    todo -> todo.id = seq++
+                    todos[todo.id] = todo
+                    todo })
 
             ServerResponse.ok().cors().body(m, Todo::class.java)
         })
@@ -76,9 +67,15 @@ class ApplicationRoutes() {
 
             if (!todos.contains(id)) {
                 ServerResponse.notFound().build()
-            };
+            }
 
-            val m = it.bodyToMono(Todo::class.java).map { updateTodo(it, id) }
+            val m = it.bodyToMono(Todo::class.java).map { todo ->
+                val old = todos[id]!!
+                if (!todo.title.isEmpty()) old.title = todo.title
+                if (todo.completed) old.completed = true
+                if (todo.order > -1) old.order = todo.order
+                old
+            }
 
             ServerResponse.ok().cors().body(m, Todo::class.java)
 
