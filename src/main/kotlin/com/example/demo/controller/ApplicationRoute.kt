@@ -1,4 +1,4 @@
-package com.example.demo.TestController
+package com.example.demo.controller
 
 import com.example.demo.Config
 import org.springframework.context.annotation.Bean
@@ -10,18 +10,19 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-var seq: Int = 0;
+var seq: Int = 0
 
-val todos = HashMap<Int, Todo>();
+val todos = HashMap<Int, Todo>()
 
 data class Todo(var id: Int = 0, var title: String = "", var completed: Boolean = false, var order: Int = -1) {
-
     // Needed because of jackson
     // Can also add jackson-kotlin, but need to update mapper. 1 line vs 15 ...
-    constructor() : this(0);
+    @Suppress("unused")
+    constructor() : this(0)
 
+    @Suppress("unused")
     val url: String
-        get() = "${Config.root}/${id}";
+        get() = "${Config.root}/$id"
 }
 
 fun <B : HeadersBuilder<B>> B.cors(): B = header("Access-Control-Allow-Origin", "*").
@@ -30,7 +31,7 @@ fun <B : HeadersBuilder<B>> B.cors(): B = header("Access-Control-Allow-Origin", 
 
 
 @Configuration
-class ApplicationRoutes() {
+class ApplicationRoutes {
 
 
     @Bean
@@ -41,9 +42,11 @@ class ApplicationRoutes() {
         GET("/", { ServerResponse.ok().cors().body(Flux.fromIterable(todos.values), Todo::class.java) })
         POST("/", {
             val m = it.bodyToMono(Todo::class.java).map({
-                    todo -> todo.id = seq++
-                    todos[todo.id] = todo
-                    todo })
+                todo ->
+                todo.id = seq++
+                todos[todo.id] = todo
+                todo
+            })
 
             ServerResponse.ok().cors().body(m, Todo::class.java)
         })
@@ -59,7 +62,7 @@ class ApplicationRoutes() {
         })
         DELETE("/{id}", {
             val id = it.pathVariable("id").toInt()
-            todos.remove(id);
+            todos.remove(id)
             ServerResponse.ok().cors().build()
         })
         PATCH("/{id}", {
@@ -69,11 +72,11 @@ class ApplicationRoutes() {
                 ServerResponse.notFound().build()
             }
 
-            val m = it.bodyToMono(Todo::class.java).map { todo ->
+            val m = it.bodyToMono(Todo::class.java).map { (_, title, completed, order) ->
                 val old = todos[id]!!
-                if (!todo.title.isEmpty()) old.title = todo.title
-                if (todo.completed) old.completed = true
-                if (todo.order > -1) old.order = todo.order
+                if (!title.isEmpty()) old.title = title
+                if (completed) old.completed = true
+                if (order > -1) old.order = order
                 old
             }
 
